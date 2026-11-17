@@ -24,6 +24,7 @@ npm run build
 - On an allowed page, choose **Open page assistant** in the toolbar popup and choose **Capture entered details** to review fields you edited during the current visit. Manual capture works with automatic learning turned off and skips sensitive fields.
 - User-approved learning from completed edits. Update an existing answer, save a site-specific variant, or dismiss a suggestion. Use Question Memory to add aliases and exclude different questions.
 - Profile fields for school, college or university, X / Twitter, a personal site and another URL. Use **Add custom field** for extra details and links.
+- Save projects with a name, role, technologies, description, impact, source link and live link. Choose a featured project for automatic filling of matching fields.
 - Site grants, site blocks, learning exclusions, vault lock, JSON import/export and local data deletion.
 - Native text, email, telephone, numeric and URL inputs, textareas, single-select dropdowns and native radio groups. Eligible dates, contenteditable controls and some native checkboxes require individual review. Unsupported custom controls can present a value for manual entry.
 - Dynamic form detection, including accessible frames with granted origins and discoverable open shadow roots.
@@ -85,7 +86,7 @@ package-lock.json
 
 ### Backup format
 
-An export is a JSON object with `version: 1`, a `profile` object keyed by standard identifiers such as `personal.email`, an `education` array, and an `answers` array. Education records include an ID, college, degree, specialization, graduation year and GPA. Answer records include a UUID, question, value, aliases, exclusions, source origin, optional semantic key, scope, category, timestamps and an autofill flag. An empty scope means global. Timestamps use ISO 8601 UTC. Import validates the format and replaces the vault's profile, education and answers. Unversioned backups with the same fields are migrated to version 1.
+An export is a JSON object with `version: 1`, a `profile` object keyed by standard identifiers such as `personal.email`, an `education` array, a `projects` object, and an `answers` array. Education records include an ID, college, degree, specialization, graduation year and GPA. Answer records include a UUID, question, value, aliases, exclusions, source origin, optional semantic key, scope, category, timestamps and an autofill flag. An empty scope means global. Timestamps use ISO 8601 UTC. Import validates the format and replaces the vault's profile, education and answers. Unversioned backups with the same fields are migrated to version 1.
 
 ## Limitations and troubleshooting
 
