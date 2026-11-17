@@ -101,3 +101,5 @@ button { min-height: 36px; }
 
 .card summary { cursor: pointer; font-weight: 650; }
 .card details[open] summary { margin-bottom: 12px; }
+
+.card select { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--field); color: var(--ink); }

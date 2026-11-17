@@ -19,6 +19,8 @@ function start() {
   const submitted = new WeakMap<HTMLElement,string>()
   const observed = new Map<Document|ShadowRoot,MutationObserver>()
   const changes = new Set<ParentNode>()
+  const skipped = new Map<HTMLElement,string>()
+  let skippedOpen = false
   const recommendations = new Map<HTMLElement,Ranked[]>()
   const queue = new Map<HTMLElement,Suggestion>()
   let serial = 0, running = false, pending = false, active = false, learn = false, expandReview = false
@@ -99,6 +101,7 @@ function start() {
     captureOpen = false
     captureMessage = ''
     recommendations.clear()
+    skipped.clear()
     queue.clear()
     controls.clear()
     changes.clear()
@@ -138,6 +141,7 @@ function start() {
       for (const element of queue.keys()) if (!element.isConnected) queue.delete(element)
       const empty = [...controls.values()].filter(control=>isEmpty(control) && !wasEdited(control.element))
       recommendations.clear()
+      skipped.clear()
       for (let index=0;index<Math.max(empty.length,1);index+=80) {
         const batch = empty.slice(index,index+80)
         const result = await send<MatchResponse>({type:'MATCH',fields:batch.map(control=>control.field),explicit:force})
@@ -152,7 +156,11 @@ function start() {
         if (!captureAllowed) captureMessage = ''
         for (const control of batch) {
           const matches = result.matches[control.field.id] ?? []
-          if (!matches.length) continue
+          if (!matches.length) {
+            const reason = result.skipped[control.field.id]
+            if (reason) skipped.set(control.element,reason)
+            continue
+          }
           if (matches[0].action==='autofill' && apply(control,matches[0].value)) {
             filled.add(control.element)
           } else if (isEmpty(control)) recommendations.set(control.element,matches)
@@ -275,6 +283,23 @@ function start() {
       button('Disable on this site',()=>task(async()=>{await send({type:'SITE',mode:'block'});deactivate()})))
     if (captureAllowed) body.append(button('Capture entered details',()=>task(captureEdits)))
     if (captureMessage) body.append(paragraph(captureMessage))
+    const explanations = [...controls.values()].flatMap(control=>{
+      if (filled.has(control.element)) return []
+      const reason = !isEmpty(control) ? 'This field already has a value.' :
+        wasEdited(control.element) ? 'You edited this field on this page.' :
+        recommendations.has(control.element) ? 'Review the suggested answer before filling.' : skipped.get(control.element)
+      return reason ? [{label:control.field.label || control.field.name || 'Unnamed field',reason}] : []
+    })
+    if (explanations.length) {
+      const details = document.createElement('details')
+      details.open = skippedOpen
+      details.addEventListener('toggle',()=>{skippedOpen=details.open})
+      const summary = document.createElement('summary')
+      summary.textContent = 'Why fields were skipped'
+      details.append(summary)
+      for (const {label,reason} of explanations.slice(0,40)) details.append(paragraph(`${label} — ${reason}`))
+      body.append(details)
+    }
     if (recommendations.size) {
       const details = document.createElement('details')
       details.open = expandReview
@@ -287,7 +312,7 @@ function start() {
         if (!control) continue
         const item = document.createElement('article')
         item.append(paragraph(control.field.label || control.field.name || 'Form field'))
-        for (const match of matches) item.append(button(`Use ${match.value.slice(0,90)}`,()=>task(async()=>{
+        for (const match of matches) item.append(button(`Use ${match.project ? match.project + ': ' : ''}${match.value.slice(0,90)}`,()=>task(async()=>{
           const fresh = await send<MatchResponse>({type:'MATCH',fields:[control.field]})
           const approved = fresh.matches[control.field.id]?.find(candidate=>candidate.id===match.id && candidate.value===match.value)
           if (approved && apply(control,approved.value,true)) {
@@ -330,6 +355,7 @@ function start() {
     if (message?.type==='CONTENT_REFRESH') {
       generation++
       recommendations.clear()
+      skipped.clear()
       learn = captureAllowed = false
       captureMessage = ''
       assistant?.body.replaceChildren()
