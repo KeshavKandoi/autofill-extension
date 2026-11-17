@@ -18,6 +18,9 @@
   <div><span>ZIP</span><div><input id="location-zip" placeholder="94103"></div></div>
   <div><span>Website</span><input type="text" value="https://" placeholder="https://" id="website-link"></div>
   <div><span>Twitter</span><input type="url" name="twitterUrl" id="twitter-link" placeholder="https://twitter.com/username"></div>
+  <label>Project name <input></label>
+  <label>Project description <textarea></textarea></label>
+  <label>Live project URL <input type="url"></label>
   <button type="submit">Submit</button>
 </form>
 <button id="signup" onclick="document.querySelector('#signup-dialog').showModal()">Open signup</button>
@@ -34,6 +37,7 @@
 <button id="rerender">Replace name field</button>
 <button id="outside">Leave field</button>
 <iframe title="Embedded form" src="./frame.html"></iframe>
+<section aria-labelledby="reference-title"><h2 id="reference-title">References</h2><label>Email <input id="reference-email" type="email"></label></section>
 <div id="react"></div>
 <div id="shadow"></div>
 <script type="module" src="./form.tsx"></script>

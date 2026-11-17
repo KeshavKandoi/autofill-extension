@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { blocked, classify, normalize, rank, type Candidate, type Field } from '../src/matching/engine'
+import { blocked, classify, explainNoMatch, normalize, rank, type Candidate, type Field } from '../src/matching/engine'
 import { candidates, migrate } from '../src/storage/schema'
 import { derive, newSalt, open, seal } from '../src/storage/vault'
 
@@ -31,6 +31,12 @@ describe('Matching',()=>{
     expect(matches(field('Manager Email',{autocomplete:'email'}))).toEqual([])
     expect(matches(field('Phone number',{autocomplete:'email'}))).toEqual([])
     expect(matches(field('Email',{context:'Reference information'}))).toEqual([])
+  })
+  it('explains unmatched fields and keeps reference details separate',()=>{
+    const reference = field('Email',{context:'References'})
+    expect(matches(reference)).toEqual([])
+    expect(explainNoMatch(reference,candidates(data),origin)).toContain('someone else')
+    expect(explainNoMatch(field('Phone'),candidates(data),origin)).toContain('no saved value')
   })
   it('excludes hidden controls, passwords, OTPs, and hostile instructions',()=>{
     for (const item of [field('',{type:'password'}),field('One-time code'),field('',{autocomplete:'cc-number'}),field('Social security number'),field('Email',{type:'hidden'})]) expect(blocked(item)).toBe(true)
