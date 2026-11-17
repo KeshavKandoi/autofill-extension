@@ -64,6 +64,9 @@ export function candidates(data:ProfileData):Candidate[] {
   if (!profile['professional.websiteUrl'] && profile['professional.portfolioUrl']) {
     profile['professional.websiteUrl'] = profile['professional.portfolioUrl']
   }
+  const portfolioOrLinkedin = profile['professional.portfolioUrl']?.trim() || profile['professional.websiteUrl']?.trim() ||
+    profile['professional.linkedinUrl']?.trim()
+  if (portfolioOrLinkedin) profile['professional.portfolioOrLinkedin'] = portfolioOrLinkedin
   return [...Object.entries(profile).filter(([,value])=>value).map(([key,value])=>({
     id:key,key,value,question:'',aliases:[],excluded:[],context:'',scope:'',autofill:true
   })),...data.education.flatMap(({id,college,degree,specialization,graduationYear,gpa})=>

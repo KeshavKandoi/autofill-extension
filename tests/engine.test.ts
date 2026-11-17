@@ -27,6 +27,20 @@ describe('Matching',()=>{
     expect(matches(field('LinkedIn URL (optional)'),pool)[0]?.value).toBe('https://www.linkedin.com/in/example')
     expect(matches(field('Manager name (optional)'),pool)).toEqual([])
   })
+  it('matches combined portfolio and résumé link prompts',()=>{
+    const pool=candidates(migrate({profile:{
+      'professional.portfolioUrl':'https://portfolio.example','professional.linkedinUrl':'https://linkedin.com/in/example',
+      'professional.resumeUrl':'https://docs.example/resume',
+    },answers:[]}))
+    expect(matches(field('Portfolio or LinkedIn'),pool)[0]?.value).toBe('https://portfolio.example')
+    expect(matches(field('Resume',{placeholder:'Link to your resume (Google Drive, Notion, your site)'}),pool)[0]?.value).toBe('https://docs.example/resume')
+    expect(matches(field('Resume',{type:'file'}),pool)).toEqual([])
+    const project=answer({key:'project.description',value:'Built an offline sync tool.'})
+    expect(matches(field('Anything we should know?',{
+      type:'textarea',placeholder:'The most interesting system you have built, or anything else.',
+    }),[project])[0]?.action).toBe('suggest')
+    expect(matches(field('Anything we should know?',{type:'textarea'}),[project])).toEqual([])
+  })
   it('rejects conflicting hints and third-party contacts',()=>{
     expect(matches(field('Manager Email',{autocomplete:'email'}))).toEqual([])
     expect(matches(field('Phone number',{autocomplete:'email'}))).toEqual([])

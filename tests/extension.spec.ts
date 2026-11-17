@@ -79,7 +79,7 @@ test('built extension fills, learns, reuses, updates, locks, and stops on disabl
     await expect(options.getByText('Vault unlocked',{exact:true})).toBeVisible()
     for (const [key,value] of Object.entries({
       'Full name':'Ada Example','First name':'Ada','Last name':'Example','Email':'ada@example.test',
-      Country:'India','Postal code':'411001','LinkedIn URL':'https://www.linkedin.com/in/example','Portfolio URL':'https://ada.example.test','X / Twitter profile URL':'https://x.com/example',
+      Country:'India','Postal code':'411001','Résumé URL':'https://docs.example.test/resume','LinkedIn URL':'https://www.linkedin.com/in/example','Portfolio URL':'https://ada.example.test','X / Twitter profile URL':'https://x.com/example',
     })) await options.getByLabel(key,{exact:true}).fill(value)
     await options.getByRole('button',{name:'Save profile'}).click()
     await expect(options.getByText('Profile saved.')).toBeVisible()
@@ -114,6 +114,9 @@ test('built extension fills, learns, reuses, updates, locks, and stops on disabl
     await page.goto(fixture)
     await expect(page.getByLabel('Applicant Name')).toHaveValue('Ada Example')
     await expect(page.getByLabel('Project name',{exact:true})).toHaveValue('Notebook Sync')
+    await expect(page.getByLabel('Portfolio or LinkedIn')).toHaveValue('https://ada.example.test')
+    await expect(page.getByLabel('Resume',{exact:true})).toHaveValue('https://docs.example.test/resume')
+    await expect(page.getByLabel('Anything we should know?')).toHaveValue('')
     await expect(page.getByLabel('Project description',{exact:true})).toHaveValue('Built offline sync for field notes.')
     await expect(page.getByLabel('Live project URL',{exact:true})).toHaveValue('https://notebook.example.test')
     await expect(page.getByLabel('Email Address')).toHaveValue('existing@example.test')

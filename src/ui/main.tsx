@@ -11,7 +11,7 @@ const tabs = ['Profile','Projects','Saved answers','Websites','Settings']
 const labels:Record<string,string> = {
   fullName:'Full name',firstName:'First name',middleName:'Middle name',lastName:'Last name',countryCode:'Phone country code',
   postalCode:'Postal code',highestQualification:'Highest qualification',gpa:'GPA or CGPA',role:'Current role',
-  school:'School name',college:'College or university name',xUrl:'X / Twitter profile URL',websiteUrl:'Personal website URL',otherUrl:'Other website URL',githubUrl:'GitHub URL',linkedinUrl:'LinkedIn URL',portfolioUrl:'Portfolio URL',experience:'Years of experience',
+  resumeUrl:'Résumé URL',school:'School name',college:'College or university name',xUrl:'X / Twitter profile URL',websiteUrl:'Personal website URL',otherUrl:'Other website URL',githubUrl:'GitHub URL',linkedinUrl:'LinkedIn URL',portfolioUrl:'Portfolio URL',experience:'Years of experience',
 }
 const display = (key:string) => labels[key] ?? key[0].toUpperCase()+key.slice(1)
 function Card({title,children}:{title:string;children:ReactNode}) {
@@ -199,7 +199,7 @@ function Profile({profile,education,act}:{profile:Record<string,string>;educatio
     void act(()=>send({type:'PROFILE',profile:draft,education:entries}),'Profile saved.')
   }}>
     {['personal','education','professional','links'].map(group=><Card key={group} title={{personal:'Personal details',education:'Education',professional:'Work details',links:'Websites and social links'}[group]!}>
-      <div className="grid">{Object.keys(dictionary).filter(key=>group==='links' ? key.startsWith('professional.') && key.endsWith('Url') : key.startsWith(group+'.') && !key.endsWith('Url')).map(key=><label key={key}>{display(key.split('.')[1])}
+      <div className="grid">{Object.keys(dictionary).filter(key=>group==='links' ? key.startsWith('professional.') && key.endsWith('Url') : key.startsWith(group+'.') && !key.endsWith('Url') && key!=='professional.portfolioOrLinkedin').map(key=><label key={key}>{display(key.split('.')[1])}
         <input type={key.endsWith('Url')?'url':key==='personal.email'?'email':'text'} placeholder={key.endsWith('Url')?'https://…':undefined} value={draft[key] ?? ''} maxLength={4000} onChange={event=>setDraft({...draft,[key]:event.target.value})}/>
       </label>)}</div></Card>)}
     <Card title="Additional education">

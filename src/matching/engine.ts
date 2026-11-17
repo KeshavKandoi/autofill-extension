@@ -28,6 +28,8 @@ export const dictionary = {
   'professional.linkedinUrl': 'linkedin|linkedin profile|linkedin url|linkedin profile url',
   'professional.portfolioUrl': 'portfolio|portfolio website|portfolio url|personal portfolio url',
   'professional.xUrl': 'x profile|x profile url|x url|twitter|twitter url|twitter profile|twitter profile url',
+  'professional.resumeUrl': 'resume url|resume link|cv url|cv link|link to your resume|link to your cv',
+  'professional.portfolioOrLinkedin': 'portfolio or linkedin|portfolio or linkedin url|portfolio or linkedin link|linkedin or portfolio',
   'professional.websiteUrl': 'website|personal website|personal website url|website url|personal url',
   'professional.otherUrl': 'other website|other website url|additional website url|other link',
   'project.name': 'project name|project title|featured project name|best project name',
@@ -80,6 +82,13 @@ export function classify(field: Field) {
   const label = questionKey(field.label)
   const explicit = autocomplete[field.autocomplete.trim().split(/\s+/).at(-1) ?? '']
   const named = reverse.get(label)
+  if ((field.type==='url' || ['text','url'].includes(field.type) && /^(link to your (resume|cv)|https?:)/i.test(field.placeholder)) && /^(resume|cv)$/.test(label)) {
+    return {key:'professional.resumeUrl',score:0.97,reason:'Résumé link field'}
+  }
+  if (field.type==='textarea' && /^(anything we should know|anything else|additional information)$/.test(label) &&
+      /\b(?:project|system|application|product) you (?:have )?built\b/.test(normalize(field.placeholder+' '+field.help))) {
+    return {key:'project.description',score:0.88,reason:'Prompt asks about something you built'}
+  }
   const prompt = normalize(field.label || field.placeholder)
   if (field.type==='combobox' && /^(start typing your address|search (for )?(your )?address)$/.test(prompt)) {
     return {key:'personal.address',score:0.86,reason:'Address search prompt'}
