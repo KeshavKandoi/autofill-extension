@@ -1,4 +1,4 @@
-import { blocked, classify, contextual, evidence, privateMessage, questionKey, rank } from '../matching/engine'
+import { blocked, classify, contextual, evidence, explainNoMatch, privateMessage, questionKey, rank } from '../matching/engine'
 import { command, originPattern, siteOf, type Command } from '../messages'
 import { candidates, defaults, emptyData, migrate, settingsSchema, type Answer, type ProfileData } from '../storage/schema'
 import { derive, newSalt, open, seal, vaultSchema } from '../storage/vault'
@@ -85,7 +85,7 @@ async function route(message:Command,sender:chrome.runtime.MessageSender) {
   const session = await unlocked()
   const detailsOpen = Boolean(session && dashboard && sender.documentId &&
     (await chrome.storage.session.get('detailsDocument')).detailsDocument === sender.documentId)
-  if (['PROFILE','IMPORT','ANSWER','DELETE','CLEAR'].includes(message.type) && !detailsOpen) {
+  if (['PROFILE','PROJECTS','IMPORT','ANSWER','DELETE','CLEAR'].includes(message.type) && !detailsOpen) {
     throw new Error('Enter your vault password to manage saved details.')
   }
   switch (message.type) {
@@ -142,6 +142,7 @@ async function route(message:Command,sender:chrome.runtime.MessageSender) {
     }
     case 'MATCH': {
       const responses = Object.create(null) as Record<string,ReturnType<typeof rank>>
+      const skipped = Object.create(null) as Record<string,string>
       if (active && session) {
         let pool = pools.get(session.data)
         if (!pool) {
@@ -149,19 +150,26 @@ async function route(message:Command,sender:chrome.runtime.MessageSender) {
           pools.set(session.data,pool)
         }
         for (const field of message.fields) {
-          responses[field.id] = rank(field,pool,site).flatMap(match=>{
+          const ranked = rank(field,pool,site)
+          responses[field.id] = ranked.flatMap(match=>{
             if (match.action === 'autofill' && (prefs.auto || message.explicit)) return [match]
             return prefs.suggest ? [{...match,action:'suggest' as const}] : []
           })
+          if (!responses[field.id].length) skipped[field.id] = ranked.length
+            ? 'This match needs review. Turn on Suggest answers to see it.'
+            : explainNoMatch(field,pool,site)
         }
+      } else if (active) {
+        for (const field of message.fields) skipped[field.id] = 'Unlock Autofill in Manage information.'
       }
-      return {active,capture:active && Boolean(session) && !prefs.noLearn.includes(site),learn:active && Boolean(session) && prefs.learn && !prefs.noLearn.includes(site),matches:responses}
+      return {active,skipped,capture:active && Boolean(session) && !prefs.noLearn.includes(site),learn:active && Boolean(session) && prefs.learn && !prefs.noLearn.includes(site),matches:responses}
     }
     default: break
   }
   if (!session) throw new Error('Unlock the vault first.')
   const {data} = session
   switch (message.type) {
+    case 'PROJECTS': return write({...data,projects:message.projects})
     case 'PROFILE': return write({...data,profile:message.profile,education:message.education})
     case 'IMPORT': return write(migrate(message.data))
     case 'DELETE': return write({...data,answers:data.answers.filter(answer=>answer.id!==message.id)})

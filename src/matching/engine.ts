@@ -30,6 +30,13 @@ export const dictionary = {
   'professional.xUrl': 'x profile|x profile url|x url|twitter|twitter url|twitter profile|twitter profile url',
   'professional.websiteUrl': 'website|personal website|personal website url|website url|personal url',
   'professional.otherUrl': 'other website|other website url|additional website url|other link',
+  'project.name': 'project name|project title|featured project name|best project name',
+  'project.description': 'project description|describe your project|describe your best project|tell us about a project you built',
+  'project.role': 'project role|your role in the project|your contribution to the project',
+  'project.technologies': 'project tech stack|project technologies|technologies used in the project|project tools',
+  'project.impact': 'project impact|project results|project outcome|project achievements',
+  'project.repositoryUrl': 'project repository|project repository url|project github url|source code link|source code url',
+  'project.demoUrl': 'project demo|project demo url|live project url|live demo link|project link|project url',
   'context.relocation': 'willing to relocate|open to relocation|relocation',
 } as const
 
@@ -59,7 +66,7 @@ export interface Field {
 }
 const sensitive = /\b(passwords?|passcode|otp|one time|verification code|security code|security question|recovery phrase|recovery code|authentication|tokens?|api key|private key|secret|credit card|debit card|card number|cvv|cvc|pin|bank|iban|routing number|social security|ssn|aadhaar|aadhar|passport|government id|tax id|driver s license|driving license|voter id|medical|health|diagnosis|insurance|patient|medication|national id|captcha|biometric|dob|date of birth)\b/
 export const contextual = /\b(salary|compensation|visa|sponsorship|authorization|authorisation|notice period|start date|earliest start|relocat\w*|availability|available|legal|consent|eligib\w*|terms|agree|declare|certify|citizenship)\b/
-const otherPerson = /\b(manager|supervisor|reference|referee|emergency contact|guardian|parent|spouse|recipient|beneficiary|recommender|witness|billing|shipping)\b/
+const otherPerson = /\b(managers?|supervisors?|references?|referees?|emergency contacts?|guardians?|parents?|spouse|recipients?|beneficiaries|beneficiary|recommenders?|witnesses|witness|billing|shipping)\b/
 export const privateMessage = /\b(message|comments?|feedback|notes?|describe|tell us|subject|complaint|how can we help|what can we help|conversation|inquiry|request details)\b/
 export function evidence(field: Field) {
   return normalize([field.label,field.name,field.domId,field.placeholder,field.autocomplete,field.help,field.context].join(' '))
@@ -107,6 +114,7 @@ export interface Ranked {
   fieldId:string
   id:string
   semanticKey?:string
+  project?:string
   value:string
   confidence:number
   reason:string
@@ -132,6 +140,17 @@ function prepared(item:Candidate) {
   }
   return metadata
 }
+export function explainNoMatch(field:Field, candidates:Candidate[], origin:string) {
+  const text = evidence(field)
+  if (blocked(field) || /\b(consent|terms|agree|certify|captcha)\b/.test(text)) return 'Autofill skips sensitive fields and consent questions.'
+  if (otherPerson.test(text)) return 'This field appears to ask for someone else’s details.'
+  const classification = classify(field)
+  if (!classification) return 'Autofill could not identify a saved answer for this field.'
+  const saved = candidates.some(item=>item.key===classification.key && item.value && (!item.scope || item.scope===origin))
+  if (!saved) return 'There is no saved value for this detail.'
+  if (field.options.length) return 'No available option matched the saved value.'
+  return 'The saved value could not be matched with enough confidence.'
+}
 export function rank(field:Field, candidates:Candidate[], origin:string, high=0.94, medium=0.72, provider=tokenSimilarity):Ranked[] {
   const text = evidence(field)
   if (blocked(field) || /\b(consent|terms|agree|certify|captcha)\b/.test(text)) return []
@@ -147,13 +166,15 @@ export function rank(field:Field, candidates:Candidate[], origin:string, high=0.
     const semantic = item.key && classification?.key === item.key ? classification : undefined
     const exact = question && phrases.includes(question)
     const similarity = item.key || !question ? 0 : Math.max(0,...phrases.map(phrase=>provider.similarity(question,phrase)))
-    const confidence = semantic?.score ?? (exact ? 0.96 : similarity >= 0.6 ? 0.66 + similarity * 0.19 : 0)
+    const score = semantic?.score ?? (exact ? 0.96 : similarity >= 0.6 ? 0.66 + similarity * 0.19 : 0)
+    const confidence = item.key?.startsWith('project.') && !item.autofill ? Math.min(score,0.88) : score
     if (confidence < medium) continue
     if (['select','radio','combobox','checkbox'].includes(field.type) && field.options.length &&
         !field.options.some(option=>normalize(option)===normalize(item.value))) continue
     const action = confidence >= high && item.autofill && !needsReview ? 'autofill' : 'suggest'
     const match:Ranked = {
       fieldId:field.id,id:item.id,semanticKey:item.key,value:item.value,confidence,action,
+      project:item.key?.startsWith('project.') ? item.context : undefined,
       reason:semantic?.reason ?? (exact?'Saved question or alias':'Similar wording'),
     }
     const previous = matches.get(item.value)

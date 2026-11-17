@@ -18,8 +18,14 @@ function label(element:HTMLElement) {
     ('labels' in element ? clean(Array.from((element as HTMLInputElement).labels ?? [],labelText).join(' ')) : '')
 }
 function formContext(element:HTMLElement) {
-  const form = element.closest('form,[role="form"],section,dialog')
-  return clean([form?.getAttribute('aria-label'),text(form?.querySelector('h1,h2,h3')),form?.getAttribute('name')].filter(Boolean).join(' '))
+  const form = element.closest('form,[role="form"]')
+  const section = element.closest('fieldset,section,dialog,[role="group"],[role="region"],[role="dialog"]')
+  const heading = section?.querySelector(':scope > h1,:scope > h2,:scope > h3,:scope > h4,:scope > header > h2,:scope > header > h3')
+  return clean([
+    form?.getAttribute('aria-label'),form?.getAttribute('name'),
+    section?.getAttribute('aria-label'),section instanceof HTMLElement ? referenced(section,'aria-labelledby') : '',
+    text(heading),
+  ].filter(Boolean).join(' '))
 }
 export function extract(element:HTMLElement,id:string):Control|undefined {
   if (element.closest('[data-autofill-ai]')) return

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { answerSchema, educationSchema, origin, settingsSchema, short, value } from './storage/schema'
+import { answerSchema, educationSchema, projectsSchema, origin, settingsSchema, short, value } from './storage/schema'
 import type { Field, Ranked } from './matching/engine'
 import type { ProfileData, Settings } from './storage/schema'
 
@@ -13,6 +13,7 @@ export const command = z.discriminatedUnion('type',[
   z.object({type:z.literal('UNLOCK'),passphrase:z.string().min(12).max(1024)}),
   z.object({type:z.literal('SETTINGS'),settings:settingsSchema.partial()}),
   z.object({type:z.literal('PROFILE'),profile:z.record(value),education:z.array(educationSchema).max(30)}),
+  z.object({type:z.literal('PROJECTS'),projects:projectsSchema}),
   z.object({type:z.literal('IMPORT'),data:z.unknown()}),
   z.object({type:z.literal('ANSWER'),answer:answerSchema}),
   z.object({type:z.literal('DELETE'),id:z.string().uuid()}),
@@ -24,7 +25,7 @@ export const command = z.discriminatedUnion('type',[
 export type Command = z.infer<typeof command>
 export interface State {settings:Settings; exists:boolean; unlocked:boolean; data?:ProfileData; profileCount?:number; answerCount?:number}
 export interface Page {detected:number; filled:number; empty:number; review:number}
-export interface MatchResponse {active:boolean; learn:boolean; capture:boolean; matches:Record<string,Ranked[]>}
+export interface MatchResponse {active:boolean; learn:boolean; capture:boolean; skipped:Record<string,string>; matches:Record<string,Ranked[]>}
 export interface LearnResponse {eligible:boolean; existing?:string}
 export interface Suggestion {field:Field; value:string; existing?:string; manual?:boolean}
 export async function send<T=void>(message:Command):Promise<T> {
