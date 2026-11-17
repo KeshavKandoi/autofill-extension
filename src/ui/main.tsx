@@ -2,12 +2,12 @@ import { useEffect,useState,type FormEvent,type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { dictionary } from '../matching/engine'
 import { originPattern,send,siteOf,type Page,type State } from '../messages'
-import { type Answer,type Education,type Settings } from '../storage/schema'
+import { type Answer,type Education,type ProfileData,type Project,type Settings } from '../storage/schema'
 import './style.css'
 
 const popup = location.pathname.endsWith('popup.html')
 const allSites = ['http://*/*','https://*/*']
-const tabs = ['Profile','Saved answers','Websites','Settings']
+const tabs = ['Profile','Projects','Saved answers','Websites','Settings']
 const labels:Record<string,string> = {
   fullName:'Full name',firstName:'First name',middleName:'Middle name',lastName:'Last name',countryCode:'Phone country code',
   postalCode:'Postal code',highestQualification:'Highest qualification',gpa:'GPA or CGPA',role:'Current role',
@@ -130,7 +130,7 @@ function App() {
         <div className="actions"><button onClick={()=>void browse('Profile')}>Manage information</button><button onClick={()=>void browse('Saved answers')}>Saved answers</button><button onClick={()=>void browse('Settings')}>Settings</button></div>
       </> : <>
         <nav aria-label="Dashboard" className="tabs">{tabs.map(item=><button key={item} aria-current={tab===item?'page':undefined} onClick={()=>{setMessage('');setTab(item)}}>{item}</button>)}</nav>
-        {!state.data && ['Profile','Saved answers'].includes(tab) && <Card title={state.exists?'Unlock your details':'Set up Autofill'}>
+        {!state.data && ['Profile','Projects','Saved answers'].includes(tab) && <Card title={state.exists?'Unlock your details':'Set up Autofill'}>
           <p>{state.exists?'Enter your vault password to view or change your saved details.':'Create a password to protect the details you save.'}</p>{unlock}
         </Card>}
         {tab==='Profile' && state.data && <>
@@ -138,6 +138,7 @@ function App() {
             <button onClick={()=>{setNewField(true);setTab('Saved answers')}}>＋ Add custom field</button></div>
           <Profile profile={state.data.profile} education={state.data.education} act={act}/>
         </>}
+        {tab==='Projects' && state.data && <Projects saved={state.data.projects} act={act}/>}
         {tab==='Saved answers' && state.data && <Answers answers={state.data.answers} act={act} startNew={newField} resetNew={()=>setNewField(false)}/>}
         {tab==='Websites' && <Card title="Website access">
           <p>Allow the websites you use. Access stays on until you revoke it.</p>
@@ -198,7 +199,7 @@ function Profile({profile,education,act}:{profile:Record<string,string>;educatio
     void act(()=>send({type:'PROFILE',profile:draft,education:entries}),'Profile saved.')
   }}>
     {['personal','education','professional','links'].map(group=><Card key={group} title={{personal:'Personal details',education:'Education',professional:'Work details',links:'Websites and social links'}[group]!}>
-      <div className="grid">{Object.keys(dictionary).filter(key=>group==='links' ? key.endsWith('Url') : key.startsWith(group+'.') && !key.endsWith('Url')).map(key=><label key={key}>{display(key.split('.')[1])}
+      <div className="grid">{Object.keys(dictionary).filter(key=>group==='links' ? key.startsWith('professional.') && key.endsWith('Url') : key.startsWith(group+'.') && !key.endsWith('Url')).map(key=><label key={key}>{display(key.split('.')[1])}
         <input type={key.endsWith('Url')?'url':key==='personal.email'?'email':'text'} placeholder={key.endsWith('Url')?'https://…':undefined} value={draft[key] ?? ''} maxLength={4000} onChange={event=>setDraft({...draft,[key]:event.target.value})}/>
       </label>)}</div></Card>)}
     <Card title="Additional education">
@@ -216,6 +217,47 @@ function Profile({profile,education,act}:{profile:Record<string,string>;educatio
     </Card>
     <div className="save-bar"><button className="primary">Save profile</button></div>
   </form>
+}
+function Projects({saved,act}:{saved:ProfileData['projects'];act:Act}) {
+  const [draft,setDraft] = useState(saved)
+  useEffect(()=>setDraft(saved),[JSON.stringify(saved)])
+  const update = (id:string,key:Exclude<keyof Project,'id'>,value:string) =>
+    setDraft(previous=>({...previous,entries:previous.entries.map(project=>project.id===id ? {...project,[key]:value} : project)}))
+  return <Card title="Projects">
+    <p>Save projects you’re proud of. Pick a featured project to fill clearly labeled project fields automatically.</p>
+    <form className="stack" onSubmit={event=>{
+      event.preventDefault()
+      void act(()=>send({type:'PROJECTS',projects:draft}),'Projects saved.')
+    }}>
+      {draft.entries.length>0 && <label>Featured project
+        <select value={draft.featured ?? ''} onChange={event=>setDraft({...draft,featured:event.target.value || null})}>
+          <option value="">Choose when filling a form</option>
+          {draft.entries.map((project,index)=><option key={project.id} value={project.id}>{project.name.trim() || `Project ${index+1}`}</option>)}
+        </select>
+      </label>}
+      {draft.entries.map((project,index)=><fieldset className="editor stack" key={project.id}>
+        <legend>{project.name.trim() || `Project ${index+1}`}</legend>
+        <div className="grid">
+          <label>Project name<input required maxLength={500} value={project.name} onChange={event=>update(project.id,'name',event.target.value)}/></label>
+          <label>Your role<input maxLength={500} value={project.role} onChange={event=>update(project.id,'role',event.target.value)}/></label>
+          <label>Technologies<input maxLength={500} placeholder="React, Python, PostgreSQL" value={project.technologies} onChange={event=>update(project.id,'technologies',event.target.value)}/></label>
+          <label>Repository URL<input type="url" maxLength={500} value={project.repositoryUrl} onChange={event=>update(project.id,'repositoryUrl',event.target.value)}/></label>
+          <label>Live demo URL<input type="url" maxLength={500} value={project.demoUrl} onChange={event=>update(project.id,'demoUrl',event.target.value)}/></label>
+        </div>
+        <label>Description<textarea rows={3} maxLength={4000} value={project.description} onChange={event=>update(project.id,'description',event.target.value)}/></label>
+        <label>Results or impact<textarea rows={2} maxLength={4000} value={project.impact} onChange={event=>update(project.id,'impact',event.target.value)}/></label>
+        <div><button type="button" onClick={()=>setDraft({
+          entries:draft.entries.filter(entry=>entry.id!==project.id),featured:draft.featured===project.id ? null : draft.featured,
+        })}>Remove project</button></div>
+      </fieldset>)}
+      <div className="actions">
+        <button type="button" disabled={draft.entries.length>=20} onClick={()=>setDraft({
+          ...draft,entries:[...draft.entries,{id:crypto.randomUUID(),name:'',description:'',role:'',technologies:'',impact:'',repositoryUrl:'',demoUrl:''}],
+        })}>Add project</button>
+        <button className="primary">Save projects</button>
+      </div>
+    </form>
+  </Card>
 }
 function blank():Answer {
   const now=new Date().toISOString()

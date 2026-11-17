@@ -23,8 +23,21 @@ export const educationSchema = z.object({
   id:z.string().uuid(),degree:short,specialization:short,college:short,graduationYear:short,gpa:short,
 })
 export type Education = z.infer<typeof educationSchema>
+const projectLink = z.union([z.literal(''),short.url().refine(link=>/^https?:\/\//i.test(link),'Enter an HTTP or HTTPS link')])
+export const projectSchema = z.object({
+  id:z.string().uuid(),name:short.trim().min(1),description:value,role:short,technologies:short,impact:value,
+  repositoryUrl:projectLink,demoUrl:projectLink,
+})
+export type Project = z.infer<typeof projectSchema>
+export const projectsSchema = z.object({
+  entries:z.array(projectSchema).max(20),
+  featured:z.string().uuid().nullable(),
+}).refine(({entries,featured})=>
+  new Set(entries.map(project=>project.id)).size===entries.length &&
+  (!featured || entries.some(project=>project.id===featured)),'Select a saved project to feature.')
 export const payloadSchema = z.object({
   version:z.literal(1),profile:z.record(value).refine(profile=>Object.keys(profile).every(key=>Object.hasOwn(dictionary,key))),
+  projects:projectsSchema.default({entries:[],featured:null}),
   education:z.array(educationSchema).max(30).default([]),
   answers:z.array(answerSchema).max(2500).refine(answers=>new Set(answers.map(answer=>answer.id)).size===answers.length),
 })
@@ -36,7 +49,7 @@ export type ProfileData = z.infer<typeof payloadSchema>
 export type Answer = z.infer<typeof answerSchema>
 export type Settings = z.infer<typeof settingsSchema>
 export const defaults:Settings = {enabled:true,auto:true,learn:false,suggest:true,blocked:[],noLearn:[]}
-export const emptyData:ProfileData = {version:1,profile:{},education:[],answers:[]}
+export const emptyData:ProfileData = {version:1,profile:{},projects:{entries:[],featured:null},education:[],answers:[]}
 export function migrate(input:unknown) {
   if (typeof input === 'object' && input && !('version' in input)) return payloadSchema.parse({...input,version:1})
   return payloadSchema.parse(input)
@@ -57,5 +70,9 @@ export function candidates(data:ProfileData):Candidate[] {
     Object.entries({college,degree,specialization,graduationYear,gpa}).filter(([,value])=>value).map(([key,value])=>({
       id:`${id}:${key}`,key:`education.${key}`,value,question:'',aliases:[],excluded:[],scope:'',
       context:[college,degree].filter(Boolean).join(' · '),autofill:false,
+    }))),...data.projects.entries.flatMap(({id,...project})=>
+    Object.entries(project).filter(([,value])=>value.trim()).map(([key,value])=>({
+      id:`${id}:${key}`,key:`project.${key}`,value,question:'',aliases:[],excluded:[],scope:'',
+      context:project.name,autofill:data.projects.featured===id,
     }))),...data.answers]
 }
