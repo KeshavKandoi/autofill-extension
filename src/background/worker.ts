@@ -1,35 +1,22 @@
 import { blocked, classify, contextual, evidence, explainNoMatch, privateMessage, questionKey, rank } from '../matching/engine'
 import { command, originPattern, siteOf, type Command } from '../messages'
 import { candidates, defaults, emptyData, migrate, settingsSchema, type Answer, type ProfileData } from '../storage/schema'
-import { derive, newSalt, open, seal, vaultSchema } from '../storage/vault'
-
-const trustedStorage = Promise.all([
-  chrome.storage.local.setAccessLevel({accessLevel:'TRUSTED_CONTEXTS'}),
-  chrome.storage.session.setAccessLevel({accessLevel:'TRUSTED_CONTEXTS'}),
-])
+const trustedStorage = chrome.storage.local.setAccessLevel({accessLevel:'TRUSTED_CONTEXTS'})
 const pools = new WeakMap<ProfileData,ReturnType<typeof candidates>>()
-let cached: {raw:string; data:ProfileData}|undefined
+let cached:ProfileData|undefined
 async function settings() {
   const saved = (await chrome.storage.local.get('settings')).settings
   return settingsSchema.catch(defaults).parse(saved)
 }
-async function vault() {
-  const stored = (await chrome.storage.local.get('vault')).vault
-  return stored === undefined ? undefined : vaultSchema.parse(stored)
-}
-async function unlocked() {
-  const {raw} = await chrome.storage.session.get('raw')
-  if (typeof raw !== 'string') return undefined
-  if (cached?.raw === raw) return cached
-  const stored = await vault()
-  if (stored) return cached = {raw,data:await open(stored,raw)}
+async function savedData() {
+  if (cached) return cached
+  const {details} = await chrome.storage.local.get('details')
+  return cached = details === undefined ? emptyData : migrate(details)
 }
 async function write(data:ProfileData) {
-  const session = await unlocked(), stored = await vault()
-  if (!session || !stored) throw new Error('Unlock the vault first.')
   const validated = migrate(data)
-  await chrome.storage.local.set({vault:await seal(validated,session.raw,stored.salt)})
-  cached = {raw:session.raw,data:validated}
+  await chrome.storage.local.set({details:validated})
+  cached = validated
 }
 const registration = 'autofill-authorized'
 async function sync() {
@@ -59,7 +46,7 @@ async function refreshPages() {
 }
 function reconcile() { void ordered(sync).catch(console.error).finally(refreshPages) }
 chrome.storage.onChanged.addListener(changes=>{
-  if (changes.settings || changes.vault || changes.raw) void refreshPages()
+  if (changes.settings || changes.details) void refreshPages()
 })
 chrome.permissions.onAdded.addListener(reconcile)
 chrome.permissions.onRemoved.addListener(reconcile)
@@ -82,40 +69,21 @@ async function route(message:Command,sender:chrome.runtime.MessageSender) {
   if (!ownPage && (!fromContent || !['MATCH','LEARN','SITE'].includes(message.type))) throw new Error('Website access is unavailable.')
   const prefs = await settings()
   const active = Boolean(fromContent && prefs.enabled && !prefs.blocked.includes(site) && !prefs.blocked.includes(topSite))
-  const session = await unlocked()
-  const detailsOpen = Boolean(session && dashboard && sender.documentId &&
-    (await chrome.storage.session.get('detailsDocument')).detailsDocument === sender.documentId)
-  if (['PROFILE','PROJECTS','IMPORT','ANSWER','DELETE','CLEAR'].includes(message.type) && !detailsOpen) {
-    throw new Error('Enter your vault password to manage saved details.')
+  if (['PROFILE','PROJECTS','IMPORT','ANSWER','DELETE','CLEAR'].includes(message.type) && !dashboard) {
+    throw new Error('Open Manage information to change saved details.')
   }
+  const data = await savedData()
   switch (message.type) {
     case 'STATE': return {
-      settings:prefs,exists:Boolean(await vault()),unlocked:Boolean(session),
-      data:detailsOpen ? session?.data : undefined,
-      profileCount:session ? Object.values(session.data.profile).filter(value=>value.trim()).length : undefined,
-      answerCount:session?.data.answers.length,
+      settings:prefs,data:dashboard ? data : undefined,
+      profileCount:Object.values(data.profile).filter(value=>value.trim()).length,
+      answerCount:data.answers.length,
     }
     case 'SYNC': return sync()
-    case 'HIDE_DETAILS':
-      if (detailsOpen) await chrome.storage.session.remove('detailsDocument')
-      return
     case 'CLEAR':
-      await chrome.storage.session.remove(['raw','detailsDocument'])
-      await chrome.storage.local.remove(['vault','settings'])
+      await chrome.storage.local.remove(['details','vault','settings'])
       cached = undefined
       return
-    case 'UNLOCK': {
-      if (!dashboard || !sender.documentId) throw new Error('Open Manage information to unlock your vault.')
-      const stored = await vault(), salt = stored?.salt ?? newSalt()
-      const raw = await derive(message.passphrase,salt)
-      let data:ProfileData
-      try { data = stored ? await open(stored,raw) : emptyData }
-      catch { throw new Error('That password did not unlock the vault.') }
-      if (!stored) await chrome.storage.local.set({vault:await seal(data,raw,salt)})
-      await chrome.storage.session.set({raw,detailsDocument:sender.documentId})
-      cached = {raw,data}
-      return
-    }
     case 'SETTINGS': await chrome.storage.local.set({settings:settingsSchema.parse({...prefs,...message.settings})}); return
     case 'SITE': {
       const target = ownPage ? message.site : site
@@ -142,11 +110,11 @@ async function route(message:Command,sender:chrome.runtime.MessageSender) {
     case 'MATCH': {
       const responses = Object.create(null) as Record<string,ReturnType<typeof rank>>
       const skipped = Object.create(null) as Record<string,string>
-      if (active && session) {
-        let pool = pools.get(session.data)
+      if (active) {
+        let pool = pools.get(data)
         if (!pool) {
-          pool = candidates(session.data)
-          pools.set(session.data,pool)
+          pool = candidates(data)
+          pools.set(data,pool)
         }
         for (const field of message.fields) {
           const ranked = rank(field,pool,site)
@@ -158,15 +126,11 @@ async function route(message:Command,sender:chrome.runtime.MessageSender) {
             ? 'This match needs review. Turn on Suggest answers to see it.'
             : explainNoMatch(field,pool,site)
         }
-      } else if (active) {
-        for (const field of message.fields) skipped[field.id] = 'Unlock Autofill in Manage information.'
       }
-      return {active,skipped,capture:active && Boolean(session) && !prefs.noLearn.includes(site),learn:active && Boolean(session) && prefs.learn && !prefs.noLearn.includes(site),matches:responses}
+      return {active,skipped,capture:active && !prefs.noLearn.includes(site),learn:active && prefs.learn && !prefs.noLearn.includes(site),matches:responses}
     }
     default: break
   }
-  if (!session) throw new Error('Unlock the vault first.')
-  const {data} = session
   switch (message.type) {
     case 'PROJECTS': return write({...data,projects:message.projects})
     case 'PROFILE': return write({...data,profile:message.profile,education:message.education})
