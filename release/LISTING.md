@@ -10,7 +10,7 @@ Productivity
 English
 
 **Short description**  
-Fill forms on sites you choose using an encrypted local profile and answers you approve.
+Fill forms on sites you choose using a local profile and answers you approve.
 
 ## Detailed description
 
@@ -20,9 +20,9 @@ Fill repeated forms with less typing. Autofill matches fields on websites you au
 - Review details you entered on an allowed page, then save answers you want to reuse.
 - Manage saved answers, alternative question wording and site-specific answers.
 - Choose which websites the extension can access and turn off learning whenever you like.
-- Protect your saved profile in a passphrase-encrypted vault on your device.
+- Keep your saved profile on your device.
 
-To get started, open Manage information, create your vault and save your profile. Grant access to a site with a form. The extension works without an account or a paid AI service. You decide when to submit each form.
+To get started, open Manage information and save your profile. Grant access to a site with a form. The extension works without an account or a paid AI service. You decide when to submit each form.
 
 ## Dashboard privacy fields
 
@@ -30,7 +30,7 @@ To get started, open Manage information, create your vault and save your profile
 Help users fill web forms on authorized sites using a local profile and answers they explicitly save.
 
 **Storage justification**  
-Store encrypted profiles and saved answers, and retain local extension preferences. Keep the derived vault key in trusted Chrome session storage while the vault is unlocked.
+Store profiles, saved answers and preferences locally in Chrome extension storage.
 
 **Scripting justification**  
 Register or inject the form assistant on websites with granted access so it can recognize form controls and fill approved matching values.
@@ -49,7 +49,7 @@ The extension handles profile details, site origins, form metadata and approved 
 
 ## Reviewer instructions
 
-1. Open Manage information from the popup and create a local vault with a test passphrase of at least 12 characters.
+1. Open Manage information from the popup.
 2. Save a sample full name and email address under Profile.
 3. To try a real page, go to an HTTP or HTTPS page with a conventional form, click Allow this site in the popup, approve Chrome's prompt and reload. Test only with sample profile data.
 4. To check learning, enable Ask to save answers I enter in Settings, complete a non-sensitive unknown field on an authorized page, and choose Open page assistant from the toolbar popup to review the answer.
