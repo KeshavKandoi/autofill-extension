@@ -16,9 +16,6 @@ try {
   const worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker')
   const page = await context.newPage()
   await page.goto(new URL('/options.html',worker.url()).href)
-  await page.getByLabel('Vault password').fill('example-only passphrase')
-  await page.getByRole('button',{name:'Create vault'}).click()
-  await page.getByText('Autofill ready',{exact:true}).waitFor()
   for (const [label,value] of Object.entries({
     'Full name':'Morgan Example','First name':'Morgan','Last name':'Example','Email':'morgan@example.test',
     'City':'Pune','Country':'India','Portfolio URL':'https://portfolio.example.test',
