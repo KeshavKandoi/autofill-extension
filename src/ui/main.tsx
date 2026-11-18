@@ -23,7 +23,7 @@ function App() {
   const [grants,setGrants] = useState<string[]>([]), [allowed,setAllowed] = useState<boolean>()
   const [page,setPage] = useState<Page>(), [message,setMessage] = useState(''), [busy,setBusy] = useState(false)
   const [newField,setNewField] = useState(false)
-  const [pass,setPass] = useState(''), [website,setWebsite] = useState('')
+  const [website,setWebsite] = useState('')
   function chromeInitialTab() { return tabs.find(item=>item.toLowerCase().replace(' ','-')===location.hash.slice(1)) ?? 'Profile' }
   async function refresh() {
     const [next,permissions] = await Promise.all([send<State>({type:'STATE'}),chrome.permissions.getAll()])
@@ -57,7 +57,7 @@ function App() {
       if (!disposed) setPage(result)
     })
     return ()=>{disposed=true}
-  },[site,tabId,grants.join('|'),state?.unlocked,state?.settings.enabled,state?.settings.blocked.join('|')])
+  },[site,tabId,grants.join('|'),state?.settings.enabled,state?.settings.blocked.join('|')])
   async function act(action:()=>Promise<unknown>,success='') {
     setBusy(true);setMessage('')
     try {const result=await action(); await refresh();setMessage(typeof result==='string'?result:success)}
@@ -88,40 +88,29 @@ function App() {
       void refresh().catch(()=>{})
     })
   }
-  const unlock = <form className="stack" onSubmit={event=>{
-    event.preventDefault()
-    void act(async()=>{await send({type:'UNLOCK',passphrase:pass});setPass('')},state?.exists?'Vault unlocked.':'Vault created.')
-  }}>
-    <label>Vault password<input type="password" autoComplete={state?.exists?'current-password':'new-password'} minLength={12} maxLength={1024} required value={pass} onChange={event=>setPass(event.target.value)}/></label>
-    {!state?.exists && <small>Use at least 12 characters. Save it somewhere safe.</small>}
-    <button className="primary" disabled={busy}>{state?.exists?'Unlock vault':'Create vault'}</button>
-  </form>
-
   return <main className={popup?'popup':'dashboard'}>
     <header className="brand"><div className="glyph" aria-hidden="true">↗</div><div><h1>Autofill</h1></div></header>
     {!state && !message && <p role="status">Loading extension…</p>}
     {state && <>
-      <div className="statusline"><span>{settings?.enabled?'Enabled':'Disabled'}</span><span>{state.unlocked?'Autofill ready':'Autofill paused'}</span>
-        {!popup && state.data && <button className="quiet" onClick={()=>void act(()=>send({type:'HIDE_DETAILS'}))}>Hide saved details</button>}</div>
+      <div className="statusline"><span>{settings?.enabled?'Enabled':'Disabled'}</span></div>
       {popup ? <>
         <Card title={site ? new URL(site).host : 'Current website'}>
           <p>{!site?'Website access unavailable':blocked?'Blocked':allowed===undefined?'Checking access…':allowed?'Allowed':'Permission required'}</p>
-          {allowed && !blocked && state.unlocked && settings?.enabled && <small>{settings.auto ?
+          {allowed && !blocked && settings?.enabled && <small>{settings.auto ?
             'Fills matching fields automatically.' : 'Choose Fill once whenever you want to fill a page.'}</small>}
           {page && <div className="metrics"><span><b>{page.detected}</b> Detected</span><span><b>{page.filled}</b> Filled</span><span><b>{page.empty}</b> Empty</span></div>}
-          <p>{state.unlocked ? `${state.profileCount ?? 0} profile fields · ${state.answerCount ?? 0} saved answers` : state.exists ? 'Autofill is paused until you unlock your vault.' : 'Open Manage information to set up Autofill.'}</p>
+          <p>{state.profileCount} profile fields · {state.answerCount} saved answers</p>
           <div className="actions">
-            {allowed && !blocked && !state.unlocked && state.exists && <button className="primary" onClick={()=>void browse('Profile')}>Unlock Autofill</button>}
             {site && allowed===false && <button className="primary" disabled={busy} onClick={()=>void act(()=>grant([originPattern(site)]),'Website access granted.')}>Allow this site</button>}
             {site && allowed && <button onClick={()=>void act(()=>send({type:'SITE',site,mode:blocked?'allow':'block'}))}>{blocked?'Enable on this site':'Disable on this site'}</button>}
-            {allowed && !blocked && state.unlocked && settings?.enabled && tabId!==undefined && <button className="primary" onClick={()=>void act(async()=>{
+            {allowed && !blocked && settings?.enabled && tabId!==undefined && <button className="primary" onClick={()=>void act(async()=>{
               const result = await send<Page>({type:'PAGE',tabId,fill:true})
               setPage(result)
               return result.filled > (page?.filled ?? 0) ? 'Filled matching fields.' :
                 result.review ? 'Open the page assistant to review suggested answers.' :
                 result.empty ? 'No saved details matched the empty fields. Check your profile.' : 'The detected fields already have values.'
             })}>{settings.auto ? 'Fill this page' : 'Fill once'}</button>}
-            {allowed && !blocked && state.unlocked && settings?.enabled && tabId!==undefined &&
+            {allowed && !blocked && settings?.enabled && tabId!==undefined &&
               <button onClick={()=>void act(async()=>{
                 await send<Page>({type:'PAGE',tabId,fill:false,openAssistant:true})
                 window.close()
@@ -131,9 +120,6 @@ function App() {
         <div className="actions"><button onClick={()=>void browse('Profile')}>Manage information</button><button onClick={()=>void browse('Saved answers')}>Saved answers</button><button onClick={()=>void browse('Settings')}>Settings</button></div>
       </> : <>
         <nav aria-label="Dashboard" className="tabs">{tabs.map(item=><button key={item} aria-current={tab===item?'page':undefined} onClick={()=>{setMessage('');setTab(item)}}>{item}</button>)}</nav>
-        {!state.data && ['Profile','Projects','Saved answers'].includes(tab) && <Card title={state.exists?'Unlock your details':'Set up Autofill'}>
-          <p>{state.exists?'Enter your vault password to view or change your saved details.':'Create a password to protect the details you save.'}</p>{unlock}
-        </Card>}
         {tab==='Profile' && state.data && <>
           <div className="section-intro"><div><h2>Your profile</h2><p>Details you can reuse across forms.</p></div>
             <button onClick={()=>{setNewField(true);setTab('Saved answers')}}>＋ Add custom field</button></div>
@@ -165,7 +151,6 @@ function App() {
               <label className="record" key={key}>{label}<input type="checkbox" checked={settings[key]} onChange={event=>toggle(key,event.target.checked)}/></label>)}
           </Card>
           <section className="card"><details><summary>Backups and data</summary>
-            {!state.data && <button onClick={()=>setTab('Profile')}>Unlock saved details</button>}
             <p>Backups contain your saved details. Restoring a backup replaces your current profile and answers.</p>
             <div className="actions">
               <button disabled={!state.data} onClick={()=>{
@@ -179,7 +164,7 @@ function App() {
                   await send({type:'IMPORT',data:JSON.parse(await file.text()) as unknown})
                 },'Data imported.')
               }}/></label>
-              <button className="danger" disabled={!state.data} onClick={()=>{if (confirm('Permanently delete your local vault and settings?')) void act(()=>send({type:'CLEAR'}),'Local information deleted.')}}>Clear saved information</button>
+              <button className="danger" disabled={!state.data} onClick={()=>{if (confirm('Permanently delete your saved details and settings?')) void act(()=>send({type:'CLEAR'}),'Local information deleted.')}}>Clear saved information</button>
             </div>
           </details></section>
         </>}

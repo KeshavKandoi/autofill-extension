@@ -5,7 +5,6 @@ import { join,resolve } from 'node:path'
 
 const fixture = 'http://127.0.0.1:4173/tests/fixtures/form.html'
 const other = 'http://localhost:4173/tests/fixtures/form.html?equivalent'
-const passphrase = 'local fixture passphrase'
 const testHosts = ['http://127.0.0.1/*','http://localhost/*']
 
 async function launch(directory:string,profile:string) {
@@ -52,7 +51,7 @@ async function assistantClick(page:Page,text:string) {
   } finally { await client.detach() }
 }
 
-test('built extension fills, learns, reuses, updates, locks, and stops on disable',async()=>{
+test('built extension fills, learns, reuses, survives restart, and stops on disable',async()=>{
   const temp = await mkdtemp(join(tmpdir(),'autofill-e2e-'))
   const extension = join(temp,'extension')
   const profile = join(temp,'profile')
@@ -75,23 +74,12 @@ test('built extension fills, learns, reuses, updates, locks, and stops on disabl
     await options.goto(`chrome-extension://${id}/options.html`)
     await expect(options.getByRole('heading',{name:'Autofill',exact:true})).toBeVisible()
     await expect(options.getByRole('button',{name:'Demo',exact:true})).toHaveCount(0)
-    await options.getByLabel('Vault password').fill(passphrase)
-    await options.getByRole('button',{name:'Create vault'}).click()
-    await expect(options.getByText('Autofill ready',{exact:true})).toBeVisible()
     for (const [key,value] of Object.entries({
       'Full name':'Ada Example','First name':'Ada','Last name':'Example','Email':'ada@example.test',
       Country:'India','Postal code':'411001','GitHub URL':'https://github.com/example','Résumé URL':'https://docs.example.test/resume','LinkedIn URL':'https://www.linkedin.com/in/example','Portfolio URL':'https://ada.example.test','X / Twitter profile URL':'https://x.com/example',
     })) await options.getByLabel(key,{exact:true}).fill(value)
     await options.getByRole('button',{name:'Save profile'}).click()
     await expect(options.getByText('Profile saved.')).toBeVisible()
-    const privateView = await context.newPage()
-    await privateView.goto(`chrome-extension://${id}/options.html`)
-    await expect(privateView.getByLabel('Vault password')).toBeVisible()
-    await expect(privateView.getByLabel('Full name',{exact:true})).toHaveCount(0)
-    await privateView.goto(`chrome-extension://${id}/popup.html`)
-    await expect(privateView.getByText('Autofill ready',{exact:true})).toBeVisible()
-    await expect(privateView.getByLabel('Vault password')).toHaveCount(0)
-    await privateView.close()
     await options.getByRole('button',{name:'Projects',exact:true}).click()
     await options.getByRole('button',{name:'Add project',exact:true}).click()
     await options.getByLabel('Project name',{exact:true}).fill('Notebook Sync')
@@ -195,20 +183,6 @@ test('built extension fills, learns, reuses, updates, locks, and stops on disabl
     await expect(page.locator('#qualification')).toHaveValue('Master of Engineering')
     await expect(page.locator('body')).not.toHaveAttribute('data-submitted','true')
 
-    await options.getByRole('button',{name:'Hide saved details',exact:true}).click()
-    await expect(options.getByLabel('Vault password')).toBeVisible()
-    await expect(options.getByText('Autofill ready',{exact:true})).toBeVisible()
-    await page.reload()
-    await expect(page.getByLabel('Applicant Name')).toHaveValue('Ada Example')
-    await page.getByLabel('Favorite text editor').fill('Helix')
-    await page.getByRole('button',{name:'Leave field'}).click()
-    await openAssistant(options,page)
-    await assistantClick(page,'Capture entered details')
-    await assistantClick(page,'Update answer')
-    await expect(options.getByLabel('Vault password')).toBeVisible()
-    await options.getByLabel('Vault password').fill(passphrase)
-    await options.getByRole('button',{name:'Unlock vault'}).click()
-    await expect(options.getByText('Helix',{exact:true})).toBeVisible()
     await options.getByRole('button',{name:'Settings',exact:true}).click()
     await options.getByLabel('Fill forms automatically').uncheck()
     await page.reload()
@@ -226,14 +200,12 @@ test('built extension fills, learns, reuses, updates, locks, and stops on disabl
 
     // Restart with optional permissions only. Chromium keeps grants from the previous version.
     await context.close()
-    await writeFile(manifestFile,JSON.stringify({...manifest,version:'1.0.2'}))
+    await writeFile(manifestFile,JSON.stringify({...manifest,version:'1.0.3'}))
     context = await launch(extension,profile)
     const reopened = await context.newPage()
     await reopened.goto(`chrome-extension://${id}/options.html`)
     const grant = reopened.getByText('http://127.0.0.1/*',{exact:true}).locator('..')
     const afterRestart = await context.newPage()
-    await reopened.getByLabel('Vault password').fill(passphrase)
-    await reopened.getByRole('button',{name:'Unlock vault'}).click()
     await reopened.getByRole('button',{name:'Websites',exact:true}).click()
     await expect(grant).toBeVisible()
     await afterRestart.goto(fixture)
