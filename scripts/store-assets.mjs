@@ -18,7 +18,7 @@ try {
   await page.goto(new URL('/options.html',worker.url()).href)
   await page.getByLabel('Vault password').fill('example-only passphrase')
   await page.getByRole('button',{name:'Create vault'}).click()
-  await page.getByText('Vault unlocked',{exact:true}).waitFor()
+  await page.getByText('Autofill ready',{exact:true}).waitFor()
   for (const [label,value] of Object.entries({
     'Full name':'Morgan Example','First name':'Morgan','Last name':'Example','Email':'morgan@example.test',
     'City':'Pune','Country':'India','Portfolio URL':'https://portfolio.example.test',

@@ -96,9 +96,8 @@ async function route(message:Command,sender:chrome.runtime.MessageSender) {
       answerCount:session?.data.answers.length,
     }
     case 'SYNC': return sync()
-    case 'LOCK':
-      await chrome.storage.session.remove(['raw','detailsDocument'])
-      cached = undefined
+    case 'HIDE_DETAILS':
+      if (detailsOpen) await chrome.storage.session.remove('detailsDocument')
       return
     case 'CLEAR':
       await chrome.storage.session.remove(['raw','detailsDocument'])

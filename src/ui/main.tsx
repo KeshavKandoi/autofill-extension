@@ -101,16 +101,17 @@ function App() {
     <header className="brand"><div className="glyph" aria-hidden="true">↗</div><div><h1>Autofill</h1></div></header>
     {!state && !message && <p role="status">Loading extension…</p>}
     {state && <>
-      <div className="statusline"><span>{settings?.enabled?'Enabled':'Disabled'}</span><span>{state.unlocked?'Vault unlocked':'Vault locked'}</span>
-        {state.unlocked && <button className="quiet" onClick={()=>void act(()=>send({type:'LOCK'}))}>Lock</button>}</div>
+      <div className="statusline"><span>{settings?.enabled?'Enabled':'Disabled'}</span><span>{state.unlocked?'Autofill ready':'Autofill paused'}</span>
+        {!popup && state.data && <button className="quiet" onClick={()=>void act(()=>send({type:'HIDE_DETAILS'}))}>Hide saved details</button>}</div>
       {popup ? <>
         <Card title={site ? new URL(site).host : 'Current website'}>
           <p>{!site?'Website access unavailable':blocked?'Blocked':allowed===undefined?'Checking access…':allowed?'Allowed':'Permission required'}</p>
-          {allowed && !blocked && settings?.enabled && <small>{settings.auto ?
+          {allowed && !blocked && state.unlocked && settings?.enabled && <small>{settings.auto ?
             'Fills matching fields automatically.' : 'Choose Fill once whenever you want to fill a page.'}</small>}
           {page && <div className="metrics"><span><b>{page.detected}</b> Detected</span><span><b>{page.filled}</b> Filled</span><span><b>{page.empty}</b> Empty</span></div>}
-          <p>{state.unlocked ? `${state.profileCount ?? 0} profile fields · ${state.answerCount ?? 0} saved answers` : state.exists ? 'Open Manage information to unlock Autofill.' : 'Open Manage information to set up Autofill.'}</p>
+          <p>{state.unlocked ? `${state.profileCount ?? 0} profile fields · ${state.answerCount ?? 0} saved answers` : state.exists ? 'Autofill is paused until you unlock your vault.' : 'Open Manage information to set up Autofill.'}</p>
           <div className="actions">
+            {allowed && !blocked && !state.unlocked && state.exists && <button className="primary" onClick={()=>void browse('Profile')}>Unlock Autofill</button>}
             {site && allowed===false && <button className="primary" disabled={busy} onClick={()=>void act(()=>grant([originPattern(site)]),'Website access granted.')}>Allow this site</button>}
             {site && allowed && <button onClick={()=>void act(()=>send({type:'SITE',site,mode:blocked?'allow':'block'}))}>{blocked?'Enable on this site':'Disable on this site'}</button>}
             {allowed && !blocked && state.unlocked && settings?.enabled && tabId!==undefined && <button className="primary" onClick={()=>void act(async()=>{
@@ -199,7 +200,7 @@ function Profile({profile,education,act}:{profile:Record<string,string>;educatio
     void act(()=>send({type:'PROFILE',profile:draft,education:entries}),'Profile saved.')
   }}>
     {['personal','education','professional','links'].map(group=><Card key={group} title={{personal:'Personal details',education:'Education',professional:'Work details',links:'Websites and social links'}[group]!}>
-      <div className="grid">{Object.keys(dictionary).filter(key=>group==='links' ? key.startsWith('professional.') && key.endsWith('Url') : key.startsWith(group+'.') && !key.endsWith('Url') && key!=='professional.portfolioOrLinkedin').map(key=><label key={key}>{display(key.split('.')[1])}
+      <div className="grid">{Object.keys(dictionary).filter(key=>group==='links' ? key.startsWith('professional.') && key.endsWith('Url') : key.startsWith(group+'.') && !key.endsWith('Url') && !['professional.portfolioOrLinkedin','education.collegeAndDegree'].includes(key)).map(key=><label key={key}>{display(key.split('.')[1])}
         <input type={key.endsWith('Url')?'url':key==='personal.email'?'email':'text'} placeholder={key.endsWith('Url')?'https://…':undefined} value={draft[key] ?? ''} maxLength={4000} onChange={event=>setDraft({...draft,[key]:event.target.value})}/>
       </label>)}</div></Card>)}
     <Card title="Additional education">

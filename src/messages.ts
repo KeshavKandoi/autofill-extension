@@ -9,7 +9,7 @@ export const fieldSchema = z.object({
 })
 const simple = <T extends string>(type:T) => z.object({type:z.literal(type)})
 export const command = z.discriminatedUnion('type',[
-  simple('STATE'),simple('LOCK'),simple('CLEAR'),simple('SYNC'),
+  simple('STATE'),simple('HIDE_DETAILS'),simple('CLEAR'),simple('SYNC'),
   z.object({type:z.literal('UNLOCK'),passphrase:z.string().min(12).max(1024)}),
   z.object({type:z.literal('SETTINGS'),settings:settingsSchema.partial()}),
   z.object({type:z.literal('PROFILE'),profile:z.record(value),education:z.array(educationSchema).max(30)}),

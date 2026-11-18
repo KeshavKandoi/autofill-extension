@@ -64,6 +64,9 @@ export function candidates(data:ProfileData):Candidate[] {
   if (!profile['professional.websiteUrl'] && profile['professional.portfolioUrl']) {
     profile['professional.websiteUrl'] = profile['professional.portfolioUrl']
   }
+  const college = profile['education.college']?.trim()
+  const degree = profile['education.degree']?.trim()
+  if (college && degree) profile['education.collegeAndDegree'] = [college,degree].join(', ')
   const portfolioOrLinkedin = profile['professional.portfolioUrl']?.trim() || profile['professional.websiteUrl']?.trim() ||
     profile['professional.linkedinUrl']?.trim()
   if (portfolioOrLinkedin) profile['professional.portfolioOrLinkedin'] = portfolioOrLinkedin
@@ -74,7 +77,7 @@ export function candidates(data:ProfileData):Candidate[] {
       id:`${id}:${key}`,key:`education.${key}`,value,question:'',aliases:[],excluded:[],scope:'',
       context:[college,degree].filter(Boolean).join(' · '),autofill:false,
     }))),...data.projects.entries.flatMap(({id,...project})=>
-    Object.entries(project).filter(([,value])=>value.trim()).map(([key,value])=>({
+    Object.entries({...project,showcaseUrl:project.demoUrl || project.repositoryUrl}).filter(([,value])=>value.trim()).map(([key,value])=>({
       id:`${id}:${key}`,key:`project.${key}`,value,question:'',aliases:[],excluded:[],scope:'',
       context:project.name,autofill:data.projects.featured===id,
     }))),...data.answers]

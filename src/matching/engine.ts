@@ -13,6 +13,7 @@ export const dictionary = {
   'personal.country': 'country|country of residence',
   'personal.postalCode': 'postal code|zip|zip code|postcode',
   'education.highestQualification': 'highest qualification|highest educational qualification|highest education level',
+  'education.collegeAndDegree': 'college and degree|college and degree name|university and degree|college degree and major',
   'education.degree': 'degree|degree name',
   'education.specialization': 'branch|specialization|major|field of study',
   'education.school': 'school|school name|high school|high school name|secondary school',
@@ -39,6 +40,7 @@ export const dictionary = {
   'project.impact': 'project impact|project results|project outcome|project achievements',
   'project.repositoryUrl': 'project repository|project repository url|project github url|source code link|source code url',
   'project.demoUrl': 'project demo|project demo url|live project url|live demo link|project link|project url',
+  'project.showcaseUrl': 'link to one thing you built|link to something you built',
   'context.relocation': 'willing to relocate|open to relocation|relocation',
 } as const
 
