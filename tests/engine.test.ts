@@ -47,6 +47,12 @@ describe('Matching',()=>{
     expect(matches(field('Link to one thing you built *'),[answer({key:'project.showcaseUrl',value:'https://example.test'})])[0]?.value)
       .toBe('https://example.test')
   })
+  it('recognizes profile link prompts without treating a repository as a profile',()=>{
+    expect(classify(field('Link to your Github profile*'))?.key).toBe('professional.githubUrl')
+    expect(classify(field('Link to your LinkedIn profile *'))?.key).toBe('professional.linkedinUrl')
+    expect(classify(field('Link to your GitHub repository'))).toBeUndefined()
+    expect(classify(field('Link to your LinkedIn profile',{context:'References'}))).toBeUndefined()
+  })
   it('rejects conflicting hints and third-party contacts',()=>{
     expect(matches(field('Manager Email',{autocomplete:'email'}))).toEqual([])
     expect(matches(field('Phone number',{autocomplete:'email'}))).toEqual([])
