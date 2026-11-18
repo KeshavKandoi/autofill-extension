@@ -1,4 +1,4 @@
-import { blocked, classify, normalize, type Field } from '../matching/engine'
+import { blocked, classify, normalize, profileLinkLabel, type Field } from '../matching/engine'
 
 export const selector = 'input,textarea,select,[contenteditable="true"],[contenteditable="plaintext-only"],[role="combobox"],[role="textbox"],[role="radiogroup"],[role="checkbox"]'
 export interface Control {element:HTMLElement; field:Field; radios:HTMLInputElement[]}
@@ -49,7 +49,7 @@ export function extract(element:HTMLElement,id:string):Control|undefined {
       const previous = anchor.previousElementSibling
       if (!previous?.matches('label[for],input,select,textarea,button') && previous && !previous.querySelector(selector)) {
         const nearby = labelText(previous)
-        if (nearbyLabel.test(nearby)) { name = nearby; break }
+        if (nearbyLabel.test(nearby) || profileLinkLabel(nearby)) { name = nearby; break }
       }
     }
   }
