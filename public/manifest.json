@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "minimum_chrome_version": "120",
   "name": "Autofill",
-  "version": "1.0.1",
-  "description": "Fill authorized forms using your encrypted local profile and approved answers.",
+  "version": "1.0.2",
+  "description": "Fill authorized forms using your local profile and approved answers.",
   "permissions": [
     "storage",
     "scripting",
