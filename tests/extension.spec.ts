@@ -42,6 +42,7 @@ async function assistantClick(page:Page,text:string) {
       }
       const match = find(root)
       if (!match) return false
+      await client.send('DOM.scrollIntoViewIfNeeded',{nodeId:match.nodeId}).catch(()=>{})
       const {model} = await client.send('DOM.getBoxModel',{nodeId:match.nodeId}).catch(()=>({model:undefined}))
       if (!model) return false
       const [x1,y1,,,x2,y2] = model.content
@@ -79,7 +80,7 @@ test('built extension fills, learns, reuses, updates, locks, and stops on disabl
     await expect(options.getByText('Autofill ready',{exact:true})).toBeVisible()
     for (const [key,value] of Object.entries({
       'Full name':'Ada Example','First name':'Ada','Last name':'Example','Email':'ada@example.test',
-      Country:'India','Postal code':'411001','Résumé URL':'https://docs.example.test/resume','LinkedIn URL':'https://www.linkedin.com/in/example','Portfolio URL':'https://ada.example.test','X / Twitter profile URL':'https://x.com/example',
+      Country:'India','Postal code':'411001','GitHub URL':'https://github.com/example','Résumé URL':'https://docs.example.test/resume','LinkedIn URL':'https://www.linkedin.com/in/example','Portfolio URL':'https://ada.example.test','X / Twitter profile URL':'https://x.com/example',
     })) await options.getByLabel(key,{exact:true}).fill(value)
     await options.getByRole('button',{name:'Save profile'}).click()
     await expect(options.getByText('Profile saved.')).toBeVisible()
@@ -130,6 +131,8 @@ test('built extension fills, learns, reuses, updates, locks, and stops on disabl
     await expect(page.getByLabel('Country')).toHaveValue('IN')
     await expect(page.locator('#location-zip')).toHaveValue('411001')
     await expect(page.locator('#website-link')).toHaveValue('https://ada.example.test')
+    await expect(page.locator('#ashby-github')).toHaveValue('https://github.com/example')
+    await expect(page.locator('#ashby-linkedin')).toHaveValue('https://www.linkedin.com/in/example')
     await expect(page.locator('#twitter-link')).toHaveValue('https://x.com/example')
     await expect(page.locator('[data-autofill-ai]')).toHaveCount(0)
     await expect(page.getByLabel('Coffee')).toBeChecked()
