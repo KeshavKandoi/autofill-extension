@@ -41,6 +41,12 @@ describe('Matching',()=>{
     }),[project])[0]?.action).toBe('suggest')
     expect(matches(field('Anything we should know?',{type:'textarea'}),[project])).toEqual([])
   })
+  it('combines saved college and degree and recognizes a project link prompt',()=>{
+    const pool=candidates(migrate({profile:{'education.college':'Example College','education.degree':'BEng'},answers:[]}))
+    expect(matches(field('College and degree *'),pool)[0]?.value).toBe('Example College, BEng')
+    expect(matches(field('Link to one thing you built *'),[answer({key:'project.showcaseUrl',value:'https://example.test'})])[0]?.value)
+      .toBe('https://example.test')
+  })
   it('rejects conflicting hints and third-party contacts',()=>{
     expect(matches(field('Manager Email',{autocomplete:'email'}))).toEqual([])
     expect(matches(field('Phone number',{autocomplete:'email'}))).toEqual([])

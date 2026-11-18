@@ -25,7 +25,7 @@ npm run build
 - User-approved learning from completed edits. Update an existing answer, save a site-specific variant, or dismiss a suggestion. Use Question Memory to add aliases and exclude different questions.
 - Profile fields for school, college or university, X / Twitter, a personal site and another URL. Use **Add custom field** for extra details and links.
 - Save projects with a name, role, technologies, description, impact, source link and live link. Choose a featured project for automatic filling of matching fields.
-- Site grants, site blocks, learning exclusions, vault lock, JSON import/export and local data deletion.
+- Site grants, site blocks, learning exclusions, dashboard privacy, JSON import/export and local data deletion.
 - Native text, email, telephone, numeric and URL inputs, textareas, single-select dropdowns and native radio groups. Eligible dates, contenteditable controls and some native checkboxes require individual review. Unsupported custom controls can present a value for manual entry.
 - Dynamic form detection, including accessible frames with granted origins and discoverable open shadow roots.
 
@@ -77,7 +77,7 @@ package-lock.json
 
 ## Permissions and privacy
 
-- **Storage** holds settings and vault ciphertext locally. The derived vault key stays in trusted extension session memory, which survives service-worker suspension and is cleared on lock or Chrome restart. The password is used only to derive a key. The toolbar never asks for the password. Opening a new dashboard to view or change saved details requires the password, even if autofill is already unlocked for the current Chrome session.
+- **Storage** holds settings and vault ciphertext locally. The derived vault key stays in trusted extension session memory, which survives service-worker suspension and is cleared when Chrome restarts or the extension reloads. The password is used only to derive a key. The toolbar never asks for the password. Opening a new dashboard to view or change saved details requires the password, even if autofill is already available for the current Chrome session. **Hide saved details** closes dashboard access and leaves form filling and approved answer saving available.
 - **Scripting** registers the form assistant after you grant optional HTTP or HTTPS host access. **activeTab** lets the popup identify the current website. Host permissions span ports for each granted scheme and host. Site blocks and answer scopes use the full origin, including its port.
 - **Revoke** removes an optional grant. If a wildcard grant covers an individual site, you can remove the wildcard or block that site in **Websites**. The service worker rechecks the frame's access and site rules before matching or saving.
 - The vault uses AES-256-GCM with a fresh 96-bit nonce for each write. PBKDF2-SHA-256 derives its key with 600,000 iterations and a random 128-bit salt. Chrome storage alone offers no encryption guarantee.
