@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { blocked, classify, explainNoMatch, normalize, rank, type Candidate, type Field } from '../src/matching/engine'
 import { candidates, migrate } from '../src/storage/schema'
-import { derive, newSalt, open, seal } from '../src/storage/vault'
 
 const field = (label:string,extra:Partial<Field>={}):Field=>({
   id:'10',label,name:'',domId:'',placeholder:'',autocomplete:'',type:'text',context:'',help:'',options:[],required:false,...extra
@@ -98,18 +97,9 @@ describe('Matching',()=>{
     expect(matches(field('Preferred logging framework',{type:'select',options:['Winston']}),[answer()])).toEqual([])
   })
 })
-describe('Vault',()=>{
+describe('Saved details',()=>{
   it('migrates versionless data and rejects unknown versions',()=>{
     expect(data.version).toBe(1)
     expect(()=>migrate({...data,version:50})).toThrow()
-  })
-  it('uses unique nonces and fails closed for incorrect keys and tampering',async()=>{
-    const salt=newSalt(), raw=await derive('test passphrase one',salt)
-    const stored=await seal(data,raw,salt)
-    expect(stored.iv).not.toBe((await seal(data,raw,salt)).iv)
-    expect(stored.ciphertext).not.toContain('person@example.test')
-    expect(await open(stored,raw)).toEqual(data)
-    await expect(open(stored,await derive('test passphrase two',salt))).rejects.toThrow()
-    await expect(open({...stored,iv:newSalt().slice(0,16)},raw)).rejects.toThrow()
   })
 })

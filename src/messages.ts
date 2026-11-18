@@ -9,8 +9,7 @@ export const fieldSchema = z.object({
 })
 const simple = <T extends string>(type:T) => z.object({type:z.literal(type)})
 export const command = z.discriminatedUnion('type',[
-  simple('STATE'),simple('HIDE_DETAILS'),simple('CLEAR'),simple('SYNC'),
-  z.object({type:z.literal('UNLOCK'),passphrase:z.string().min(12).max(1024)}),
+  simple('STATE'),simple('CLEAR'),simple('SYNC'),
   z.object({type:z.literal('SETTINGS'),settings:settingsSchema.partial()}),
   z.object({type:z.literal('PROFILE'),profile:z.record(value),education:z.array(educationSchema).max(30)}),
   z.object({type:z.literal('PROJECTS'),projects:projectsSchema}),
@@ -23,7 +22,7 @@ export const command = z.discriminatedUnion('type',[
   z.object({type:z.literal('PAGE'),tabId:z.number().int().nonnegative(),fill:z.boolean(),openAssistant:z.boolean().optional()}),
 ])
 export type Command = z.infer<typeof command>
-export interface State {settings:Settings; exists:boolean; unlocked:boolean; data?:ProfileData; profileCount?:number; answerCount?:number}
+export interface State {settings:Settings; data?:ProfileData; profileCount:number; answerCount:number}
 export interface Page {detected:number; filled:number; empty:number; review:number}
 export interface MatchResponse {active:boolean; learn:boolean; capture:boolean; skipped:Record<string,string>; matches:Record<string,Ranked[]>}
 export interface LearnResponse {eligible:boolean; existing?:string}
