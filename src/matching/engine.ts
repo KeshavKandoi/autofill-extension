@@ -48,6 +48,11 @@ export const normalize = (value: string) => value.normalize('NFKD').replace(/\p{
   .replace(/([a-z])([A-Z])/g,'$1 $2').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim().replace(/\blinked in\b/g,'linkedin').replace(/\bgit hub\b/g,'github')
 export const questionKey = (value: string) => normalize(value.replace(/\s*\(\s*(optional|required)\s*\)\s*\**\s*$/i,''))
   .replace(/^(please (enter|provide|select) |what is |are you |would you be |your )/,'').replace(/^your /,'')
+const profileLinkPrompt = /^(?:(?:link|url) (?:to|of|for) (?:your )?|(?:please )?(?:provide|enter|share|paste) (?:a link to )?(?:your )?)(github|linkedin|twitter|x) profile(?: (?:link|url))?$/
+export function profileLinkLabel(value:string) {
+  const normalized = normalize(value.replace(/\s*\(\s*(optional|required)\s*\)\s*\**\s*$/i,''))
+  return profileLinkPrompt.test(normalized) ? normalized.replace(profileLinkPrompt,'$1 profile') : undefined
+}
 const reverse = new Map(Object.entries(dictionary).flatMap(([key, words]) => words.split('|').map(word => [word,key] as const)))
 const autocomplete: Record<string,string> = {
   name:'personal.fullName','given-name':'personal.firstName','additional-name':'personal.middleName','family-name':'personal.lastName',
@@ -81,7 +86,7 @@ export function blocked(field: Field) {
 }
 export function classify(field: Field) {
   if (blocked(field) || otherPerson.test(evidence(field))) return undefined
-  const label = questionKey(field.label)
+  const label = profileLinkLabel(field.label) ?? questionKey(field.label)
   const explicit = autocomplete[field.autocomplete.trim().split(/\s+/).at(-1) ?? '']
   const named = reverse.get(label)
   if ((field.type==='url' || ['text','url'].includes(field.type) && /^(link to your (resume|cv)|https?:)/i.test(field.placeholder)) && /^(resume|cv)$/.test(label)) {
